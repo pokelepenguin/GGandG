@@ -1,7 +1,7 @@
 import spherey
 
 # Number of players (choose from 2, 4, 5, 8)
-num_players = 5
+num_players = 4
 
 # Create the spherical mesh with 2 subdivisions
 vertices, faces = spherey.create_spherical_mesh(subdivisions=2)
