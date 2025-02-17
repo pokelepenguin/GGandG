@@ -10,7 +10,6 @@ from collections import defaultdict
 
 
 
-
 def normalize(v):
     return v / np.linalg.norm(v)
 
@@ -155,12 +154,9 @@ def rotate_vertices(vertices, angle_x, angle_y):
     return rotated_vertices
 
 
-
-
-
 def visualize_sphere_pygame(vertices, faces, zones=None):
     pygame.init()
-    screen_width, screen_height = 1200, 600  # Increased width to accommodate both views
+    screen_width, screen_height = 1200, 600
     screen = pygame.display.set_mode((screen_width, screen_height))
     pygame.display.set_caption('Spherical Mesh Visualization')
     clock = pygame.time.Clock()
@@ -168,7 +164,7 @@ def visualize_sphere_pygame(vertices, faces, zones=None):
 
     running = True
     angle_x, angle_y = 0, 0
-    zoom = 200
+    zoom = 300
     clicked_face = None
 
     def project_vertex(vertex, zoom, screen, offset_x=0):
@@ -213,6 +209,15 @@ def visualize_sphere_pygame(vertices, faces, zones=None):
 
         return graph
 
+    def rotate_vertices(vertices, angle_x, angle_y):
+        rotation_x = np.array([[1, 0, 0],
+                               [0, np.cos(angle_x), -np.sin(angle_x)],
+                               [0, np.sin(angle_x), np.cos(angle_x)]])
+        rotation_y = np.array([[np.cos(angle_y), 0, np.sin(angle_y)],
+                               [0, 1, 0],
+                               [-np.sin(angle_y), 0, np.cos(angle_y)]])
+        return np.dot(vertices, np.dot(rotation_x, rotation_y).T)
+
     face_graph = build_face_graph(faces)
 
     while running:
@@ -238,31 +243,32 @@ def visualize_sphere_pygame(vertices, faces, zones=None):
         projected_vertices = [project_vertex(v, zoom, screen) for v in rotated_vertices]
 
         # Draw the 3D sphere visualization on the left side of the screen
-        for face, zone in zip(faces, zones):
+        for i, face in enumerate(faces):
             if is_face_visible(face, rotated_vertices):
-                points = [projected_vertices[i] for i in face]
-                pygame.draw.polygon(screen, colors[zone], points, 0)
+                points = [projected_vertices[j] for j in face]
+                color = colors[zones[i]] if zones else (255, 255, 255)
+                pygame.draw.polygon(screen, color, points, 0)
                 pygame.draw.polygon(screen, (0, 0, 0), points, 1)
+                if i == clicked_face:
+                    pygame.draw.polygon(screen, (255, 255, 0), points,
+                                        3)  # Highlight clicked triangle with yellow border
 
-        # Draw the flat depiction on the right side of the screen
+        # Draw the clicked face flat and not rotating on the right side of the screen
         if clicked_face is not None:
             face = faces[clicked_face]
+            flat_points = [project_vertex(vertices[i], zoom, screen, screen_width // 2) for i in face]
+            original_color = colors[zones[clicked_face]] if zones else (255, 255, 255)
+            pygame.draw.polygon(screen, original_color, flat_points, 0)  # Use original color for clicked face
+            pygame.draw.polygon(screen, (255, 255, 0), flat_points, 3)  # Highlight with yellow border
+
             neighbors = [n for n in face_graph[clicked_face]]
-            clicked_points = [project_vertex(rotated_vertices[i], zoom, screen, screen_width // 2) for i in face]
-
-            flat_zoom = 100
-
             for neighbor in neighbors:
-                neighbor_points = [project_vertex(rotated_vertices[i], flat_zoom, screen, screen_width // 2) for i in
+                neighbor_points = [project_vertex(vertices[i], zoom, screen, screen_width // 2) for i in
                                    faces[neighbor]]
-                pygame.draw.polygon(screen, (255, 255, 0), neighbor_points, 0)  # Highlight neighbor triangles in yellow
-
-            clicked_flat_points = [project_vertex(rotated_vertices[i], flat_zoom, screen, screen_width // 2) for i in
-                                   face]
-            pygame.draw.polygon(screen, (0, 255, 0), clicked_flat_points, 0)  # Highlight clicked triangle in green
+                neighbor_color = colors[zones[neighbor]] if zones else (255, 255, 255)
+                pygame.draw.polygon(screen, neighbor_color, neighbor_points, 0)
 
         pygame.display.flip()
         clock.tick(60)
 
     pygame.quit()
-
