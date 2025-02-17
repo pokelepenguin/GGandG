@@ -6,6 +6,10 @@ import concurrent.futures
 from itertools import combinations
 from tqdm import tqdm
 import random
+from collections import defaultdict
+
+
+
 
 def normalize(v):
     return v / np.linalg.norm(v)
@@ -150,29 +154,66 @@ def rotate_vertices(vertices, angle_x, angle_y):
     rotated_vertices = np.dot(rotated_vertices, rotation_matrix_y)
     return rotated_vertices
 
+
+
+
+
 def visualize_sphere_pygame(vertices, faces, zones=None):
     pygame.init()
-    screen = pygame.display.set_mode((800, 600))
+    screen_width, screen_height = 1200, 600  # Increased width to accommodate both views
+    screen = pygame.display.set_mode((screen_width, screen_height))
     pygame.display.set_caption('Spherical Mesh Visualization')
     clock = pygame.time.Clock()
     colors = {'spawn': (255, 0, 0), 'normal': (0, 255, 255)}
 
     running = True
-    dragging = False
-    last_mouse_pos = None
     angle_x, angle_y = 0, 0
-    zoom = 200  # Adjusted zoom level
+    zoom = 200
+    clicked_face = None
 
-    def project_vertex(vertex):
-        x = vertex[0] * zoom + screen.get_width() / 2
+    def project_vertex(vertex, zoom, screen, offset_x=0):
+        x = vertex[0] * zoom + screen.get_width() / 4 + offset_x
         y = -vertex[1] * zoom + screen.get_height() / 2
         return (x, y)
 
     def is_face_visible(face, vertices):
         v1, v2, v3 = vertices[face[0]], vertices[face[1]], vertices[face[2]]
         normal = np.cross(v2 - v1, v3 - v1)
-        to_camera = np.array([0, 0, 1])  # Viewing direction
+        to_camera = np.array([0, 0, 1])
         return np.dot(normal, to_camera) < 0
+
+    def point_in_triangle(pt, v1, v2, v3):
+        def sign(p1, p2, p3):
+            return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
+
+        d1 = sign(pt, v1, v2)
+        d2 = sign(pt, v2, v3)
+        d3 = sign(pt, v3, v1)
+
+        has_neg = (d1 < 0) or (d2 < 0) or (d3 < 0)
+        has_pos = (d1 > 0) or (d2 > 0) or (d3 > 0)
+
+        return not (has_neg and has_pos)
+
+    def get_clicked_face(mouse_pos, vertices, faces):
+        for i, face in enumerate(faces):
+            projected_points = [project_vertex(vertices[j], zoom, screen) for j in face]
+            if point_in_triangle(mouse_pos, *projected_points):
+                return i
+        return None
+
+    def build_face_graph(faces):
+        graph = defaultdict(list)
+        face_edges = [{tuple(sorted([face[i], face[(i + 1) % 3]])) for i in range(3)} for face in faces]
+
+        for i, edges1 in enumerate(face_edges):
+            for j, edges2 in enumerate(face_edges):
+                if i != j and len(edges1 & edges2) == 1:
+                    graph[i].append(j)
+
+        return graph
+
+    face_graph = build_face_graph(faces)
 
     while running:
         for event in pygame.event.get():
@@ -180,30 +221,45 @@ def visualize_sphere_pygame(vertices, faces, zones=None):
                 running = False
             elif event.type == MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left click
-                    dragging = True
-                    last_mouse_pos = event.pos
-            elif event.type == MOUSEBUTTONUP:
-                if event.button == 1:  # Left click
-                    dragging = False
-                    last_mouse_pos = None
-            elif event.type == MOUSEMOTION:
-                if dragging:
-                    if last_mouse_pos is not None:
-                        dx, dy = event.pos[0] - last_mouse_pos[0], event.pos[1] - last_mouse_pos[1]
-                        angle_y += dx * 0.01
-                        angle_x += dy * 0.01
-                        last_mouse_pos = event.pos
+                    clicked_face = get_clicked_face(event.pos, rotated_vertices, faces)
+            elif event.type == KEYDOWN:
+                if event.key == K_LEFT:
+                    angle_y -= 0.1
+                elif event.key == K_RIGHT:
+                    angle_y += 0.1
+                elif event.key == K_UP:
+                    angle_x -= 0.1
+                elif event.key == K_DOWN:
+                    angle_x += 0.1
 
         screen.fill((0, 0, 0))
 
         rotated_vertices = rotate_vertices(vertices, angle_x, angle_y)
-        projected_vertices = [project_vertex(v) for v in rotated_vertices]
+        projected_vertices = [project_vertex(v, zoom, screen) for v in rotated_vertices]
 
+        # Draw the 3D sphere visualization on the left side of the screen
         for face, zone in zip(faces, zones):
             if is_face_visible(face, rotated_vertices):
                 points = [projected_vertices[i] for i in face]
-                pygame.draw.polygon(screen, colors[zone], points, 0)  # Filled polygons
-                pygame.draw.polygon(screen, (0, 0, 0), points, 1)  # Polygon edges
+                pygame.draw.polygon(screen, colors[zone], points, 0)
+                pygame.draw.polygon(screen, (0, 0, 0), points, 1)
+
+        # Draw the flat depiction on the right side of the screen
+        if clicked_face is not None:
+            face = faces[clicked_face]
+            neighbors = [n for n in face_graph[clicked_face]]
+            clicked_points = [project_vertex(rotated_vertices[i], zoom, screen, screen_width // 2) for i in face]
+
+            flat_zoom = 100
+
+            for neighbor in neighbors:
+                neighbor_points = [project_vertex(rotated_vertices[i], flat_zoom, screen, screen_width // 2) for i in
+                                   faces[neighbor]]
+                pygame.draw.polygon(screen, (255, 255, 0), neighbor_points, 0)  # Highlight neighbor triangles in yellow
+
+            clicked_flat_points = [project_vertex(rotated_vertices[i], flat_zoom, screen, screen_width // 2) for i in
+                                   face]
+            pygame.draw.polygon(screen, (0, 255, 0), clicked_flat_points, 0)  # Highlight clicked triangle in green
 
         pygame.display.flip()
         clock.tick(60)
