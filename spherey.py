@@ -7,7 +7,7 @@ from itertools import combinations
 from tqdm import tqdm
 import random
 from collections import defaultdict
-
+from zone_stats import assign_zones, calculate_color, calculate_defense_range
 
 
 def normalize(v):
@@ -66,32 +66,6 @@ def create_spherical_mesh(subdivisions=2):
         vertices, faces = subdivide(vertices, faces)
     return vertices, faces
 
-
-
-
-def assign_zones(faces, num_players):
-    num_faces = len(faces)
-
-    # Initialize all faces as "normal" zones
-    zones = ["normal"] * num_faces
-
-    # Define spawn points for different player counts
-    spawn_points = {
-        2: [152, 264],
-        4: [7, 40, 207, 244],
-        5: [11, 114, 143, 148, 204],
-        8: [5, 26, 50, 137, 210, 241, 258, 309]
-    }
-
-    # Ensure the number of players is supported
-    if num_players not in spawn_points:
-        raise ValueError("Unsupported number of players. Choose from 2, 4, 5, or 8.")
-
-    # Set the spawn zones
-    for index in spawn_points[num_players]:
-        zones[index] = "spawn"
-
-    return zones
 
 
 
@@ -154,18 +128,42 @@ def rotate_vertices(vertices, angle_x, angle_y):
     return rotated_vertices
 
 
-def visualize_sphere_pygame(vertices, faces, zones=None):
+def visualize_sphere_pygame(vertices, faces, zones):
     pygame.init()
     screen_width, screen_height = 1400, 800  # Increased size for better visibility
     screen = pygame.display.set_mode((screen_width, screen_height))
     pygame.display.set_caption('Spherical Mesh Visualization')
     clock = pygame.time.Clock()
-    colors = {'spawn': (255, 0, 0), 'normal': (0, 255, 255)}
 
     running = True
     angle_x, angle_y = 0, 0
     zoom = 300
     clicked_face = None
+    selected_zone = None  # To keep track of the selected zone
+
+    # Calculate defense range for color normalization
+    min_defense, max_defense = calculate_defense_range(zones)
+
+    def display_zone_stats(screen, zone):
+        font = pygame.font.SysFont('Arial', 16)
+        stats_text = [
+            f"Zone Index: {zone.index}",
+            f"Type: {zone.zone_type}",
+            f"Goop Saturation: {zone.goop_sv:.2f}",
+            f"Gold per Year: {zone.gold_py:.2f}",
+            f"Defense: {zone.defense:.2f}"
+        ]
+
+        # Position to display the stats
+        x, y = 20, 20  # Adjust as needed
+
+        # Background rectangle
+        pygame.draw.rect(screen, (50, 50, 50), (x - 10, y - 10, 220, 130))
+
+        for line in stats_text:
+            text_surface = font.render(line, True, (255, 255, 255))
+            screen.blit(text_surface, (x, y))
+            y += 20
 
     def project_vertex(vertex, zoom, screen, offset_x=0):
         x = vertex[0] * zoom + screen.get_width() / 3 + offset_x
@@ -268,8 +266,6 @@ def visualize_sphere_pygame(vertices, faces, zones=None):
 
         return [p0, p1, p2], x_axis, y_axis, v0, normal
 
-    # Return axes and origin for neighbor computations
-
     face_graph = build_face_graph(faces)
 
     while running:
@@ -279,6 +275,8 @@ def visualize_sphere_pygame(vertices, faces, zones=None):
             elif event.type == MOUSEBUTTONDOWN:
                 if event.button == 1:
                     clicked_face = get_clicked_face(event.pos, rotated_vertices, faces)
+                    if clicked_face is not None:
+                        selected_zone = zones[clicked_face]  # Get the selected zone
             elif event.type == KEYDOWN:
                 if event.key == K_LEFT:
                     angle_y -= 0.1
@@ -295,20 +293,22 @@ def visualize_sphere_pygame(vertices, faces, zones=None):
         projected_vertices = [project_vertex(v, zoom, screen) for v in rotated_vertices]
 
         # Draw the 3D sphere visualization on the left
+        projected_faces = []  # To keep track for click detection
         for i, face in enumerate(faces):
             if is_face_visible(face, rotated_vertices):
                 points = [projected_vertices[j] for j in face]
-                if zones:
-                    color = colors.get(zones[i], (255, 255, 255))
-                else:
-                    color = (255, 255, 255)
+                projected_faces.append(points)
+                zone = zones[i]
+                # Calculate color based on zone type and defense
+                color = calculate_color(zone, min_defense, max_defense)
                 pygame.draw.polygon(screen, color, points)
                 pygame.draw.polygon(screen, (0, 0, 0), points, 1)
                 if i == clicked_face:
                     pygame.draw.polygon(screen, (255, 255, 0), points, 3)
+            else:
+                projected_faces.append(None)  # Placeholder
 
         # Draw the selected face and neighbors on the right
-        # In your main loop
         if clicked_face is not None:
             center_x = 2 * screen.get_width() / 3
             center_y = screen.get_height() / 2
@@ -327,7 +327,8 @@ def visualize_sphere_pygame(vertices, faces, zones=None):
             tri_2d = [p - tri_center + np.array([center_x, center_y]) for p in tri_2d]
 
             # Draw the selected triangle
-            color = colors.get(zones[clicked_face], (255, 255, 255)) if zones else (255, 255, 255)
+            zone = zones[clicked_face]
+            color = calculate_color(zone, min_defense, max_defense)
             pygame.draw.polygon(screen, color, tri_2d)
             pygame.draw.polygon(screen, (0, 0, 0), tri_2d, 1)
 
@@ -336,11 +337,6 @@ def visualize_sphere_pygame(vertices, faces, zones=None):
 
             # Retrieve the neighbors of the selected face
             neighbors = face_graph[clicked_face]
-
-            # Compute centroid of selected triangle in 3D
-            centroid_selected = (rotated_vertices[selected_vertices_indices[0]] +
-                                 rotated_vertices[selected_vertices_indices[1]] +
-                                 rotated_vertices[selected_vertices_indices[2]]) / 3
 
             # Draw neighboring triangles
             for neighbor_idx in neighbors:
@@ -361,10 +357,16 @@ def visualize_sphere_pygame(vertices, faces, zones=None):
                 neighbor_tri_2d = [p - tri_center + np.array([center_x, center_y]) for p in neighbor_tri_2d]
 
                 # Draw the neighbor triangle
-                color = colors.get(zones[neighbor_idx], (200, 200, 200)) if zones else (200, 200, 200)
+                neighbor_zone = zones[neighbor_idx]
+                color = calculate_color(neighbor_zone, min_defense, max_defense)
                 pygame.draw.polygon(screen, color, neighbor_tri_2d)
                 pygame.draw.polygon(screen, (0, 0, 0), neighbor_tri_2d, 1)
 
+            # Display stats for the selected zone
+            display_zone_stats(screen, selected_zone)
+
         pygame.display.flip()
         clock.tick(60)
+
+
     pygame.quit()
