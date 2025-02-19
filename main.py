@@ -30,6 +30,8 @@ pygame.display.set_caption('Company Creation')
 # Open company creation menu for the current player
 menu.company_creation_menu(current_player, screen)
 
-# After company creation, you can proceed to the main game visualization
-# spherey.visualize_sphere_pygame(vertices, faces, zones)
+# After company creation, proceed to the main game visualization
+pygame.display.set_caption('Gold, Goop, and Gambling')
+spherey.visualize_sphere_pygame(vertices, faces, zones)
+
 
