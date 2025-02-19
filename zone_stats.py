@@ -1,6 +1,6 @@
 import random
 import numpy as np
-
+from player import Player
 current_filter = 'none'  # Options: 'none', 'goop', 'gold', 'defense'
 
 class Zone:
@@ -19,7 +19,6 @@ class Zone:
         return (f"Zone(index={self.index}, type='{self.zone_type}', owner={self.owner}, "
                 f"goop_sv={self.goop_sv:.2f}, gold_py={self.gold_py:.2f}, defense={self.defense:.2f})")
 
-
 def assign_zones(faces, num_players):
     num_faces = len(faces)
     zones = []
@@ -36,26 +35,31 @@ def assign_zones(faces, num_players):
     if num_players not in spawn_points:
         raise ValueError("Unsupported number of players. Choose from 2, 4, 5, or 8.")
 
-    # Set the spawn zones and assign to players
+    # Create players and assign spawn zones
+    players = []
     spawn_indices = spawn_points[num_players]
-    player_indices = list(range(num_players))
-    random.shuffle(player_indices)  # Randomize player order
-    player_spawns = dict(zip(spawn_indices, player_indices))
+    for i, spawn_index in enumerate(spawn_indices):
+        player_id = i
+        player_name = f"Player {i + 1}"
+        player = Player(player_id, player_name, spawn_index)
+        players.append(player)
 
+    # Create zones
     for index in range(num_faces):
-        if index in spawn_indices:
-            zone_type = 'spawn'
-            owner = player_spawns[index]
-            properties = {'resource_yield': 5}  # High initial resource yield
-        else:
-            zone_type = 'normal'
-            owner = None
-            properties = {}
+        zone_type = 'normal'
+        owner = None
 
-        zone = Zone(index=index, zone_type=zone_type, owner=owner, properties=properties)
+        # Check if the zone is a spawn zone
+        player_owner = next((p for p in players if p.spawn_zone_index == index), None)
+        if player_owner:
+            zone_type = 'spawn'
+            owner = player_owner  # Assign the player as the owner (temporarily)
+
+        zone = Zone(index=index, zone_type=zone_type, owner=None)
         zones.append(zone)
 
-    return zones
+    return zones, players
+
 
 
 
