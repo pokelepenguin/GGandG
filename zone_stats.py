@@ -1,8 +1,7 @@
-# zone_stats.py
-
 import random
 import numpy as np
 
+current_filter = 'none'  # Options: 'none', 'goop', 'gold', 'defense'
 
 class Zone:
     def __init__(self, index, zone_type='normal', owner=None, properties=None):
@@ -59,6 +58,7 @@ def assign_zones(faces, num_players):
     return zones
 
 
+
 def generate_zone_stats(zones):
     mu_goop = 50
     sigma_goop = 15
@@ -67,45 +67,75 @@ def generate_zone_stats(zones):
     balancing_value = 100  # Adjust this for game balance
 
     for zone in zones:
-        # Generate normally distributed goop saturation value (goop_sv)
-        goop_sv = np.random.normal(mu_goop, sigma_goop)
-        goop_sv = max(0, min(100, goop_sv))  # Clamp to [0, 100]
+        if zone.zone_type == 'spawn':
+            # Set default values for spawn zones
+            zone.goop_sv = 85  # 85% Goop saturation
+            zone.gold_py = 850  # 850 Gold per year
+        else:
+            # Generate normally distributed goop saturation value (goop_sv)
+            goop_sv = np.random.normal(mu_goop, sigma_goop)
+            goop_sv = max(0, min(100, goop_sv))  # Clamp to [0, 100]
 
-        # Generate normally distributed gold per year (gold_py)
-        gold_py = np.random.normal(mu_gold, sigma_gold)
-        gold_py = max(100, min(1000, gold_py))  # Clamp to [100, 1000]
+            # Generate normally distributed gold per year (gold_py)
+            gold_py = np.random.normal(mu_gold, sigma_gold)
+            gold_py = max(100, min(1000, gold_py))  # Clamp to [100, 1000]
 
-        # Calculate defense stat
-        defense = goop_sv * gold_py + balancing_value
+            # Assign generated values to the zone
+            zone.goop_sv = goop_sv
+            zone.gold_py = gold_py
 
-        # Assign values to the zone
-        zone.goop_sv = goop_sv
-        zone.gold_py = gold_py
-        zone.defense = defense
+        # Calculate defense stat for all zones
+        zone.defense = zone.goop_sv * zone.gold_py + balancing_value
 
     return zones
 
 
-def calculate_color(zone, min_defense, max_defense):
-    if zone.zone_type == 'spawn':
-        # Spawn zones are colored red
-        return (255, 0, 0)  # Red color
+def calculate_color(zone, min_values, max_values, current_filter):
+    if current_filter == 'none':
+        if zone.zone_type == 'spawn':
+            return (255, 0, 0)  # Red color for spawn zones
+        else:
+            return (0, 255, 255)  # Cyan color for normal zones
     else:
-        # Normalize defense between 0 and 1
-        normalized_defense = (zone.defense - min_defense) / (max_defense - min_defense)
-        normalized_defense = max(0, min(1, normalized_defense))
+        # Get the stat to filter on
+        if current_filter == 'goop':
+            stat = zone.goop_sv
+            color_scheme = 'green'
+        elif current_filter == 'gold':
+            stat = zone.gold_py
+            color_scheme = 'yellow'
+        elif current_filter == 'ownership':
+            return 200, 200, 200
 
-        # Invert normalized defense to get darker color for higher defense
-        inverted_defense = 1 - normalized_defense
+        elif current_filter == 'defense':
+            stat = zone.defense
+            color_scheme = 'grey'
+        else:
+            stat = 0
+            color_scheme = 'white'
 
-        # Calculate green intensity (50 to 255 to avoid too dark colors)
-        min_intensity = 50
-        max_intensity = 255
-        green_intensity = int(min_intensity + inverted_defense * (max_intensity - min_intensity))
-        green_intensity = max(0, min(255, green_intensity))
+        # Normalize the stat between 0 and 1
+        min_stat = min_values[current_filter]
+        max_stat = max_values[current_filter]
+        normalized_stat = (stat - min_stat) / (max_stat - min_stat)
+        normalized_stat = max(0, min(1, normalized_stat))
 
-        # Return RGB color (R=0, G=green_intensity, B=0)
-        return (0, green_intensity, 0)
+        # Calculate color based on the color scheme
+        if color_scheme == 'green':
+            # Shades of green
+            intensity = int(normalized_stat * 255)
+            return 0, intensity, 0
+        elif color_scheme == 'yellow':
+            # Shades of yellow (red + green)
+            intensity = int(normalized_stat * 255)
+            return intensity, intensity, 0
+        elif color_scheme == 'grey':
+            # Shades of grey
+            intensity = int(normalized_stat * 255)
+            return intensity, intensity, intensity
+        else:
+            return 255, 255, 255  # Default white color
+
 
 
 def calculate_defense_range(zones, balancing_value=100):

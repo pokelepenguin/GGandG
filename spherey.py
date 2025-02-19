@@ -13,6 +13,15 @@ from zone_stats import assign_zones, calculate_color, calculate_defense_range
 def normalize(v):
     return v / np.linalg.norm(v)
 
+def calculate_centroid(points):
+    x_coords = [p[0] for p in points]
+    y_coords = [p[1] for p in points]
+    length = len(points)
+    centroid_x = sum(x_coords) / length
+    centroid_y = sum(y_coords) / length
+    return (centroid_x, centroid_y)
+
+
 def generate_icosahedron():
     phi = (1 + np.sqrt(5)) / 2
     vertices = np.array([
@@ -66,8 +75,21 @@ def create_spherical_mesh(subdivisions=2):
         vertices, faces = subdivide(vertices, faces)
     return vertices, faces
 
-
-
+def display_current_filter(screen, current_filter):
+    filter_names = {
+        'none': 'None',
+        'goop': 'Goop Saturation',
+        'gold': 'Gold per Year',
+        'defense': 'Defense',
+        'ownership': 'Ownership',
+    }
+    font = pygame.font.SysFont('Arial', 18)
+    filter_text =  f"Current Filter: {filter_names.get(current_filter, 'Unknown')}"
+    text_surface = font.render(filter_text, True, (255, 255, 255))
+    x = screen.get_width() - 400
+    y = 20
+    pygame.draw.rect(screen, (50, 50, 50), (x - 10, y - 10, 300, 40))
+    screen.blit(text_surface, (x, y))
 
 def build_face_graph(faces):
     graph = defaultdict(list)
@@ -107,11 +129,6 @@ def calculate_total_distances(faces, zones):
 
     return total_distances
 
-
-
-
-
-
 def rotate_vertices(vertices, angle_x, angle_y):
     rotation_matrix_x = np.array([
         [1, 0, 0],
@@ -127,7 +144,6 @@ def rotate_vertices(vertices, angle_x, angle_y):
     rotated_vertices = np.dot(rotated_vertices, rotation_matrix_y)
     return rotated_vertices
 
-
 def visualize_sphere_pygame(vertices, faces, zones):
     pygame.init()
     screen_width, screen_height = 1400, 800  # Increased size for better visibility
@@ -140,15 +156,27 @@ def visualize_sphere_pygame(vertices, faces, zones):
     zoom = 300
     clicked_face = None
     selected_zone = None  # To keep track of the selected zone
+    current_filter = 'none'  # Options: 'none', 'goop', 'gold', 'defense'
 
-    # Calculate defense range for color normalization
-    min_defense, max_defense = calculate_defense_range(zones)
+    # Calculate min and max values for each stat
+    min_values = {
+    'goop': min(zone.goop_sv for zone in zones),
+    'gold': min(zone.gold_py for zone in zones),
+    'defense': min(zone.defense for zone in zones if zone.zone_type != 'spawn')
+    }
+    max_values = {
+    'goop': max(zone.goop_sv for zone in zones),
+    'gold': max(zone.gold_py for zone in zones),
+    'defense': max(zone.defense for zone in zones if zone.zone_type != 'spawn')
+}
 
     def display_zone_stats(screen, zone):
         font = pygame.font.SysFont('Arial', 16)
+        owner_text = f"Owner: Player {zone.owner + 1}" if zone.owner is not None else "Owner: None"
         stats_text = [
             f"Zone Index: {zone.index}",
             f"Type: {zone.zone_type}",
+            owner_text,
             f"Goop Saturation: {zone.goop_sv:.2f}",
             f"Gold per Year: {zone.gold_py:.2f}",
             f"Defense: {zone.defense:.2f}"
@@ -158,7 +186,7 @@ def visualize_sphere_pygame(vertices, faces, zones):
         x, y = 20, 20  # Adjust as needed
 
         # Background rectangle
-        pygame.draw.rect(screen, (50, 50, 50), (x - 10, y - 10, 220, 130))
+        pygame.draw.rect(screen, (50, 50, 50), (x - 10, y - 10, 250, 150))
 
         for line in stats_text:
             text_surface = font.render(line, True, (255, 255, 255))
@@ -286,23 +314,50 @@ def visualize_sphere_pygame(vertices, faces, zones):
                     angle_x -= 0.1
                 elif event.key == K_DOWN:
                     angle_x += 0.1
+                elif event.unicode == '1':
+                    current_filter = 'none'
+                    print("Filter set to: None")
+                elif event.unicode == '2':
+                    current_filter = 'goop'
+                    print("Filter set to: Goop Saturation")
+                elif event.unicode == '3':
+                    current_filter = 'gold'
+                    print("Filter set to: Gold per Year")
+                elif event.unicode == '4':
+                    current_filter = 'defense'
+                    print("Filter set to: Defense")
+                elif event.unicode == '5':
+                    current_filter = 'ownership'
+                    print("Filter set to: Ownership (Displaying player numbers)")
 
         screen.fill((0, 0, 0))
 
         rotated_vertices = rotate_vertices(vertices, angle_x, angle_y)
         projected_vertices = [project_vertex(v, zoom, screen) for v in rotated_vertices]
 
-        # Draw the 3D sphere visualization on the left
+        # Drawing the sphere with the applied filter
         projected_faces = []  # To keep track for click detection
         for i, face in enumerate(faces):
             if is_face_visible(face, rotated_vertices):
                 points = [projected_vertices[j] for j in face]
                 projected_faces.append(points)
                 zone = zones[i]
-                # Calculate color based on zone type and defense
-                color = calculate_color(zone, min_defense, max_defense)
+                # Calculate color based on the current filter
+                color = calculate_color(zone, min_values, max_values, current_filter)
                 pygame.draw.polygon(screen, color, points)
                 pygame.draw.polygon(screen, (0, 0, 0), points, 1)
+
+                if current_filter == 'ownership':
+                    if zone.owner is not None:
+                        # Calculate centroid of the polygon
+                        centroid = calculate_centroid(points)
+                        # Render the player number
+                        font = pygame.font.SysFont('Arial', 14, bold=True)
+                        player_number = str(zone.owner + 1)  # Add 1 to make player numbers start from 1
+                        text_surface = font.render(player_number, True, (0, 0, 0))
+                        text_rect = text_surface.get_rect(center=centroid)
+                        screen.blit(text_surface, text_rect)
+
                 if i == clicked_face:
                     pygame.draw.polygon(screen, (255, 255, 0), points, 3)
             else:
@@ -328,7 +383,7 @@ def visualize_sphere_pygame(vertices, faces, zones):
 
             # Draw the selected triangle
             zone = zones[clicked_face]
-            color = calculate_color(zone, min_defense, max_defense)
+            color = calculate_color(zone, min_values, max_values, current_filter)
             pygame.draw.polygon(screen, color, tri_2d)
             pygame.draw.polygon(screen, (0, 0, 0), tri_2d, 1)
 
@@ -358,15 +413,17 @@ def visualize_sphere_pygame(vertices, faces, zones):
 
                 # Draw the neighbor triangle
                 neighbor_zone = zones[neighbor_idx]
-                color = calculate_color(neighbor_zone, min_defense, max_defense)
+                color = calculate_color(neighbor_zone, min_values, max_values, current_filter)
                 pygame.draw.polygon(screen, color, neighbor_tri_2d)
                 pygame.draw.polygon(screen, (0, 0, 0), neighbor_tri_2d, 1)
 
             # Display stats for the selected zone
             display_zone_stats(screen, selected_zone)
 
+            # Display the current filter on the screen
+            display_current_filter(screen, current_filter)
+
         pygame.display.flip()
         clock.tick(60)
-
 
     pygame.quit()

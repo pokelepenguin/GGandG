@@ -2,7 +2,7 @@ import spherey
 import zone_stats
 
 # Number of players (choose from 2, 4, 5, 8)
-num_players = 5
+num_players = 2
 
 # Create the spherical mesh with 2 subdivisions
 vertices, faces = spherey.create_spherical_mesh(subdivisions=2)
@@ -20,5 +20,6 @@ for index, total_distance in distances:
 
 # Visualize the spherical mesh with zones and interactive rotation using Pygame
 spherey.visualize_sphere_pygame(vertices, faces, zones)
+
 
 
