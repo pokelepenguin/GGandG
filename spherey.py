@@ -7,12 +7,20 @@ from itertools import combinations
 from tqdm import tqdm
 import random
 from collections import defaultdict
-
-
+from zone_stats import assign_zones, calculate_color, calculate_defense_range
 
 
 def normalize(v):
     return v / np.linalg.norm(v)
+
+def calculate_centroid(points):
+    x_coords = [p[0] for p in points]
+    y_coords = [p[1] for p in points]
+    length = len(points)
+    centroid_x = sum(x_coords) / length
+    centroid_y = sum(y_coords) / length
+    return (centroid_x, centroid_y)
+
 
 def generate_icosahedron():
     phi = (1 + np.sqrt(5)) / 2
@@ -67,34 +75,21 @@ def create_spherical_mesh(subdivisions=2):
         vertices, faces = subdivide(vertices, faces)
     return vertices, faces
 
-
-
-
-def assign_zones(faces, num_players):
-    num_faces = len(faces)
-
-    # Initialize all faces as "normal" zones
-    zones = ["normal"] * num_faces
-
-    # Define spawn points for different player counts
-    spawn_points = {
-        2: [152, 264],
-        4: [7, 40, 207, 244],
-        5: [11, 114, 143, 148, 204],
-        8: [5, 26, 50, 137, 210, 241, 258, 309]
+def display_current_filter(screen, current_filter):
+    filter_names = {
+        'none': 'None',
+        'goop': 'Goop Saturation',
+        'gold': 'Gold per Year',
+        'defense': 'Defense',
+        'ownership': 'Ownership',
     }
-
-    # Ensure the number of players is supported
-    if num_players not in spawn_points:
-        raise ValueError("Unsupported number of players. Choose from 2, 4, 5, or 8.")
-
-    # Set the spawn zones
-    for index in spawn_points[num_players]:
-        zones[index] = "spawn"
-
-    return zones
-
-
+    font = pygame.font.SysFont('Arial', 18)
+    filter_text =  f"Current Filter: {filter_names.get(current_filter, 'Unknown')}"
+    text_surface = font.render(filter_text, True, (255, 255, 255))
+    x = screen.get_width() - 400
+    y = 20
+    pygame.draw.rect(screen, (50, 50, 50), (x - 10, y - 10, 300, 40))
+    screen.blit(text_surface, (x, y))
 
 def build_face_graph(faces):
     graph = defaultdict(list)
@@ -134,11 +129,6 @@ def calculate_total_distances(faces, zones):
 
     return total_distances
 
-
-
-
-
-
 def rotate_vertices(vertices, angle_x, angle_y):
     rotation_matrix_x = np.array([
         [1, 0, 0],
@@ -154,25 +144,57 @@ def rotate_vertices(vertices, angle_x, angle_y):
     rotated_vertices = np.dot(rotated_vertices, rotation_matrix_y)
     return rotated_vertices
 
-
-
-
-
-def visualize_sphere_pygame(vertices, faces, zones=None):
+def visualize_sphere_pygame(vertices, faces, zones):
     pygame.init()
-    screen_width, screen_height = 1200, 600  # Increased width to accommodate both views
+    screen_width, screen_height = 1400, 800  # Increased size for better visibility
     screen = pygame.display.set_mode((screen_width, screen_height))
     pygame.display.set_caption('Spherical Mesh Visualization')
     clock = pygame.time.Clock()
-    colors = {'spawn': (255, 0, 0), 'normal': (0, 255, 255)}
 
     running = True
     angle_x, angle_y = 0, 0
-    zoom = 200
+    zoom = 300
     clicked_face = None
+    selected_zone = None  # To keep track of the selected zone
+    current_filter = 'none'  # Options: 'none', 'goop', 'gold', 'defense'
+
+    # Calculate min and max values for each stat
+    min_values = {
+    'goop': min(zone.goop_sv for zone in zones),
+    'gold': min(zone.gold_py for zone in zones),
+    'defense': min(zone.defense for zone in zones if zone.zone_type != 'spawn')
+    }
+    max_values = {
+    'goop': max(zone.goop_sv for zone in zones),
+    'gold': max(zone.gold_py for zone in zones),
+    'defense': max(zone.defense for zone in zones if zone.zone_type != 'spawn')
+}
+
+    def display_zone_stats(screen, zone):
+        font = pygame.font.SysFont('Arial', 16)
+        owner_text = f"Owner: Player {zone.owner}" if zone.owner is not None else "Owner: None"
+        stats_text = [
+            f"Zone Index: {zone.index}",
+            f"Type: {zone.zone_type}",
+            owner_text,
+            f"Goop Saturation: {zone.goop_sv:.2f}",
+            f"Gold per Year: {zone.gold_py:.2f}",
+            f"Defense: {zone.defense:.2f}"
+        ]
+
+        # Position to display the stats
+        x, y = 20, 20  # Adjust as needed
+
+        # Background rectangle
+        pygame.draw.rect(screen, (50, 50, 50), (x - 10, y - 10, 250, 150))
+
+        for line in stats_text:
+            text_surface = font.render(line, True, (255, 255, 255))
+            screen.blit(text_surface, (x, y))
+            y += 20
 
     def project_vertex(vertex, zoom, screen, offset_x=0):
-        x = vertex[0] * zoom + screen.get_width() / 4 + offset_x
+        x = vertex[0] * zoom + screen.get_width() / 3 + offset_x
         y = -vertex[1] * zoom + screen.get_height() / 2
         return (x, y)
 
@@ -197,21 +219,80 @@ def visualize_sphere_pygame(vertices, faces, zones=None):
 
     def get_clicked_face(mouse_pos, vertices, faces):
         for i, face in enumerate(faces):
-            projected_points = [project_vertex(vertices[j], zoom, screen) for j in face]
-            if point_in_triangle(mouse_pos, *projected_points):
-                return i
+            if is_face_visible(face, vertices):
+                projected_points = [project_vertex(vertices[j], zoom, screen) for j in face]
+                if point_in_triangle(mouse_pos, *projected_points):
+                    return i
         return None
 
     def build_face_graph(faces):
         graph = defaultdict(list)
-        face_edges = [{tuple(sorted([face[i], face[(i + 1) % 3]])) for i in range(3)} for face in faces]
-
-        for i, edges1 in enumerate(face_edges):
-            for j, edges2 in enumerate(face_edges):
-                if i != j and len(edges1 & edges2) == 1:
-                    graph[i].append(j)
-
+        edge_dict = defaultdict(list)
+        for idx, face in enumerate(faces):
+            edges = [(face[i], face[(i + 1) % 3]) for i in range(3)]
+            for edge in edges:
+                edge = tuple(sorted(edge))
+                edge_dict[edge].append(idx)
+        for edge, face_list in edge_dict.items():
+            if len(face_list) == 2:
+                a, b = face_list
+                graph[a].append(b)
+                graph[b].append(a)
         return graph
+
+    def rotate_vertices(vertices, angle_x, angle_y):
+        rotation_x = np.array([[1, 0, 0],
+                               [0, np.cos(angle_x), -np.sin(angle_x)],
+                               [0, np.sin(angle_x), np.cos(angle_x)]])
+        rotation_y = np.array([[np.cos(angle_y), 0, np.sin(angle_y)],
+                               [0, 1, 0],
+                               [-np.sin(angle_y), 0, np.cos(angle_y)]])
+        return np.dot(vertices, np.dot(rotation_y, rotation_x))
+
+    def flatten_triangle(vertices_3d, angle_x, angle_y):
+        # Rotate the vertices to align with the current view
+        rotated_vertices = rotate_vertices(np.array(vertices_3d), angle_x, angle_y)
+        v0, v1, v2 = rotated_vertices
+
+        # Edge vectors
+        e1 = v1 - v0
+        e2 = v2 - v0
+
+        # Compute the normal vector
+        normal = np.cross(e1, e2)
+        normal /= np.linalg.norm(normal)  # Normalize
+
+        # Compute the centroid
+        centroid = (v0 + v1 + v2) / 3
+
+        # Ensure the normal points outward
+        if np.dot(normal, centroid) < 0:
+            normal = -normal  # Flip the normal vector
+
+        # Choose a stable reference axis from the world axes
+        if abs(normal[1]) < 0.9:
+            x_axis_world = np.array([0, 1, 0])
+        else:
+            x_axis_world = np.array([1, 0, 0])
+
+        # Compute the local axes
+        x_axis = np.cross(x_axis_world, normal)
+        x_axis /= np.linalg.norm(x_axis)
+        y_axis = np.cross(x_axis, normal)
+
+        # Negate x_axis to correct mirror image
+        x_axis = -x_axis
+
+        # Project vertices onto the local axes
+        projected_points = []
+        for vertex in [v0, v1, v2]:
+            vec = vertex - v0  # Use v0 as the origin
+            x = np.dot(vec, x_axis)
+            y = np.dot(vec, y_axis)
+            projected_points.append(np.array([x, y]))
+        p0, p1, p2 = projected_points
+
+        return [p0, p1, p2], x_axis, y_axis, v0, normal
 
     face_graph = build_face_graph(faces)
 
@@ -220,8 +301,10 @@ def visualize_sphere_pygame(vertices, faces, zones=None):
             if event.type == QUIT:
                 running = False
             elif event.type == MOUSEBUTTONDOWN:
-                if event.button == 1:  # Left click
+                if event.button == 1:
                     clicked_face = get_clicked_face(event.pos, rotated_vertices, faces)
+                    if clicked_face is not None:
+                        selected_zone = zones[clicked_face]  # Get the selected zone
             elif event.type == KEYDOWN:
                 if event.key == K_LEFT:
                     angle_y -= 0.1
@@ -231,38 +314,116 @@ def visualize_sphere_pygame(vertices, faces, zones=None):
                     angle_x -= 0.1
                 elif event.key == K_DOWN:
                     angle_x += 0.1
+                elif event.unicode == '1':
+                    current_filter = 'none'
+                    print("Filter set to: None")
+                elif event.unicode == '2':
+                    current_filter = 'goop'
+                    print("Filter set to: Goop Saturation")
+                elif event.unicode == '3':
+                    current_filter = 'gold'
+                    print("Filter set to: Gold per Year")
+                elif event.unicode == '4':
+                    current_filter = 'defense'
+                    print("Filter set to: Defense")
+                elif event.unicode == '5':
+                    current_filter = 'ownership'
+                    print("Filter set to: Ownership (Displaying player numbers)")
 
         screen.fill((0, 0, 0))
 
         rotated_vertices = rotate_vertices(vertices, angle_x, angle_y)
         projected_vertices = [project_vertex(v, zoom, screen) for v in rotated_vertices]
 
-        # Draw the 3D sphere visualization on the left side of the screen
-        for face, zone in zip(faces, zones):
+        # Drawing the sphere with the applied filter
+        projected_faces = []  # To keep track for click detection
+        for i, face in enumerate(faces):
             if is_face_visible(face, rotated_vertices):
-                points = [projected_vertices[i] for i in face]
-                pygame.draw.polygon(screen, colors[zone], points, 0)
+                points = [projected_vertices[j] for j in face]
+                projected_faces.append(points)
+                zone = zones[i]
+                # Calculate color based on the current filter
+                color = calculate_color(zone, min_values, max_values, current_filter)
+                pygame.draw.polygon(screen, color, points)
                 pygame.draw.polygon(screen, (0, 0, 0), points, 1)
 
-        # Draw the flat depiction on the right side of the screen
+                if current_filter == 'ownership':
+                    if zone.owner is not None:
+                        # Calculate centroid of the polygon
+                        centroid = calculate_centroid(points)
+                        # Render the player number
+                        font = pygame.font.SysFont('Arial', 14, bold=True)
+                        player_number = str(zone.owner)  # Add 1 to make player numbers start from 1
+                        text_surface = font.render(player_number, True, (0, 0, 0))
+                        text_rect = text_surface.get_rect(center=centroid)
+                        screen.blit(text_surface, text_rect)
+
+                if i == clicked_face:
+                    pygame.draw.polygon(screen, (255, 255, 0), points, 3)
+            else:
+                projected_faces.append(None)  # Placeholder
+
+        # Draw the selected face and neighbors on the right
         if clicked_face is not None:
-            face = faces[clicked_face]
-            neighbors = [n for n in face_graph[clicked_face]]
-            clicked_points = [project_vertex(rotated_vertices[i], zoom, screen, screen_width // 2) for i in face]
+            center_x = 2 * screen.get_width() / 3
+            center_y = screen.get_height() / 2
 
-            flat_zoom = 100
+            size = 300  # Increased size for better visibility
+            selected_face = faces[clicked_face]
+            selected_vertices_indices = selected_face
+            selected_vertices = [vertices[idx] for idx in selected_vertices_indices]
 
-            for neighbor in neighbors:
-                neighbor_points = [project_vertex(rotated_vertices[i], flat_zoom, screen, screen_width // 2) for i in
-                                   faces[neighbor]]
-                pygame.draw.polygon(screen, (255, 255, 0), neighbor_points, 0)  # Highlight neighbor triangles in yellow
+            # Flatten the selected triangle to 2D with correct orientation
+            tri_2d, x_axis, y_axis, v0, normal_sel = flatten_triangle(selected_vertices, angle_x, angle_y)
 
-            clicked_flat_points = [project_vertex(rotated_vertices[i], flat_zoom, screen, screen_width // 2) for i in
-                                   face]
-            pygame.draw.polygon(screen, (0, 255, 0), clicked_flat_points, 0)  # Highlight clicked triangle in green
+            # Scale and translate the triangle to the right side
+            tri_2d = [p * size for p in tri_2d]
+            tri_center = sum(tri_2d) / 3
+            tri_2d = [p - tri_center + np.array([center_x, center_y]) for p in tri_2d]
+
+            # Draw the selected triangle
+            zone = zones[clicked_face]
+            color = calculate_color(zone, min_values, max_values, current_filter)
+            pygame.draw.polygon(screen, color, tri_2d)
+            pygame.draw.polygon(screen, (0, 0, 0), tri_2d, 1)
+
+            # Mapping from global vertex indices to positions in tri_2d
+            index_to_pos = {selected_vertices_indices[i]: tri_2d[i] for i in range(3)}
+
+            # Retrieve the neighbors of the selected face
+            neighbors = face_graph[clicked_face]
+
+            # Draw neighboring triangles
+            for neighbor_idx in neighbors:
+                neighbor_face = faces[neighbor_idx]
+                neighbor_vertices_indices = neighbor_face
+                neighbor_vertices = [rotated_vertices[idx] for idx in neighbor_vertices_indices]
+                neighbor_tri_2d = []
+
+                for vertex in neighbor_vertices:
+                    # Compute vector from v0 to the vertex
+                    vec = vertex - v0
+                    # Project onto the same 2D plane using x_axis and y_axis
+                    x = np.dot(vec, x_axis)
+                    y = np.dot(vec, y_axis)
+                    neighbor_tri_2d.append(np.array([x, y]) * size)
+
+                # Adjust positions to fit the display
+                neighbor_tri_2d = [p - tri_center + np.array([center_x, center_y]) for p in neighbor_tri_2d]
+
+                # Draw the neighbor triangle
+                neighbor_zone = zones[neighbor_idx]
+                color = calculate_color(neighbor_zone, min_values, max_values, current_filter)
+                pygame.draw.polygon(screen, color, neighbor_tri_2d)
+                pygame.draw.polygon(screen, (0, 0, 0), neighbor_tri_2d, 1)
+
+            # Display stats for the selected zone
+            display_zone_stats(screen, selected_zone)
+
+            # Display the current filter on the screen
+            display_current_filter(screen, current_filter)
 
         pygame.display.flip()
         clock.tick(60)
 
     pygame.quit()
-
