@@ -353,7 +353,7 @@ def visualize_sphere_pygame(vertices, faces, zones):
                         centroid = calculate_centroid(points)
                         # Render the player number
                         font = pygame.font.SysFont('Arial', 14, bold=True)
-                        player_number = str(zone.owner)  # Add 1 to make player numbers start from 1
+                        player_number = str(zone.owner.company_id)  # Add 1 to make player numbers start from 1
                         text_surface = font.render(player_number, True, (0, 0, 0))
                         text_rect = text_surface.get_rect(center=centroid)
                         screen.blit(text_surface, text_rect)
