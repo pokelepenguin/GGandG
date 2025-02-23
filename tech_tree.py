@@ -1,16 +1,13 @@
 import pygame_menu
 
-def tech_tree_menu(screen):
+
+def tech_tree_menu(screen, player):
     menu = pygame_menu.Menu('Tech Tree', 600, 400, theme=pygame_menu.themes.THEME_DARK)
 
-    def unlock_technology(tech_name):
-        # Logic for unlocking a technology
-        pass
+    # Add tech tree options here
 
-    tech_name = [""]  # Default technology name
+    def return_to_main():
+        menu.disable()
 
-    menu.add.text_input('Technology Name: ', default=tech_name[0], onchange=lambda value: tech_name.__setitem__(0, value))
-    menu.add.button('Unlock', lambda: unlock_technology(tech_name[0]))
-    menu.add.button('Return to main menu', pygame_menu.events.BACK)
-
+    menu.add.button('Return to Main Menu', return_to_main)
     menu.mainloop(screen)
