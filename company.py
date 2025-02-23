@@ -1,9 +1,9 @@
 from credit_score import CreditTier, calculate_credit_score
 from interest_rate import calculate_interest_rate
 
-
 class Company:
     def __init__(self, company_id, founder, initial_investment, public=False, outside_investment_amount=0):
+        print(f"Creating company with ID: {company_id}")
         self.company_id = company_id
         self.founder = founder  # Player object
         self.gold = initial_investment
@@ -29,6 +29,8 @@ class Company:
         else:
             # Founder owns all shares
             self.shareholders[founder.player_id] = self.shares_outstanding
+
+        print(f"Company created: {self}")
 
     def __repr__(self):
         return f"Company(id={self.company_id}, founder={self.founder.name}, gold={self.gold})"

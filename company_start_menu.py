@@ -1,5 +1,5 @@
 import pygame_menu
-import game
+import game_logic
 
 def company_creation_menu(player, screen):
     menu = pygame_menu.Menu('Start a Company', 600, 400, theme=pygame_menu.themes.THEME_DARK)
@@ -70,7 +70,7 @@ def company_creation_menu(player, screen):
         outside_investment = outside_investment_amount[0] if use_outside_investors[0] else 0
 
         # Start company
-        company = game.start_company(player, investment[0], use_outside_investors[0], outside_investment, company_name[0])
+        company = game_logic.start_company(player, investment[0], use_outside_investors[0], outside_investment, company_name[0])
 
         if company:
             print(f"Company {company.company_id} named {company.name} created successfully!")

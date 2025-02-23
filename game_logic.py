@@ -8,7 +8,8 @@ def generate_company_id():
     company_counter += 1
     return company_id
 
-def start_company(player, investment_amount, use_outside_investors, outside_investment_amount=0, company_name=None):
+def start_company(player, investment_amount, use_outside_investors, outside_investment_amount=0, company_name=None, zones=None):
+    print(f"Starting company for player {player.name} with investment {investment_amount} and outside investment {outside_investment_amount}")
     min_investment = 1000  # Define minimum investment required
     if investment_amount < min_investment:
         print(f"Minimum investment amount is {min_investment}.")
@@ -39,7 +40,7 @@ def start_company(player, investment_amount, use_outside_investors, outside_inve
 
     # Assign the player's spawn zone to the company
     spawn_zone_index = player.spawn_zone_index  # Assume this attribute exists
-    spawn_zone = game_zones[spawn_zone_index]   # Assume game_zones is a global list of zones
+    spawn_zone = zones[spawn_zone_index]   # Use the zones parameter
     spawn_zone.owner = company
     company.zones_owned.append(spawn_zone_index)
 
