@@ -14,7 +14,7 @@ def company_creation_menu(player, screen):
             investment[0] = int(value)
             if investment[0] <= 0:
                 raise ValueError("Investment amount must be greater than zero.")
-            if investment[0] > 10000:
+            if investment[0] > player.personal_gold:
                 raise ValueError("Investment amount must be equal or less than Player Gold")
             validate_outside_investment()
             update_labels()
@@ -74,6 +74,10 @@ def company_creation_menu(player, screen):
 
         if company:
             print(f"Company {company.company_id} named {company.name} created successfully!")
+            # Assign the spawn zone to the company
+            spawn_zone = 0  # Assuming the first zone is the spawn zone
+            print(f"Assigning spawn zone {spawn_zone} to company {company.company_id}")
+            company.add_zone(spawn_zone)
 
         # Close the menu to proceed to the main game
         menu.disable()

@@ -59,3 +59,10 @@ class Company:
 
     def get_max_loan_amount(self):
         return 0.5 * self.total_assets
+
+    def add_zone(self, zone_index):
+        if zone_index not in self.zones_owned:
+            self.zones_owned.append(zone_index)
+            print(f"Zone {zone_index} added to company {self.company_id}")
+        else:
+            print(f"Zone {zone_index} is already owned by company {self.company_id}")
