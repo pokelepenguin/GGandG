@@ -2,13 +2,8 @@ import numpy as np
 import pygame
 from pygame.locals import *
 from collections import deque, defaultdict
-import concurrent.futures
-from itertools import combinations
-from tqdm import tqdm
-import random
-from collections import defaultdict
-from zone_stats import assign_zones, calculate_color, calculate_defense_range
-
+from zone_stats import calculate_color
+import game_menu
 
 def normalize(v):
     return v / np.linalg.norm(v)
@@ -20,7 +15,6 @@ def calculate_centroid(points):
     centroid_x = sum(x_coords) / length
     centroid_y = sum(y_coords) / length
     return (centroid_x, centroid_y)
-
 
 def generate_icosahedron():
     phi = (1 + np.sqrt(5)) / 2
@@ -144,13 +138,8 @@ def rotate_vertices(vertices, angle_x, angle_y):
     rotated_vertices = np.dot(rotated_vertices, rotation_matrix_y)
     return rotated_vertices
 
-def visualize_sphere_pygame(vertices, faces, zones):
-    pygame.init()
-    screen_width, screen_height = 1400, 800  # Increased size for better visibility
-    screen = pygame.display.set_mode((screen_width, screen_height))
-    pygame.display.set_caption('Spherical Mesh Visualization')
+def visualize_sphere_pygame(vertices, faces, zones, screen):
     clock = pygame.time.Clock()
-
     running = True
     angle_x, angle_y = 0, 0
     zoom = 300
@@ -329,6 +318,8 @@ def visualize_sphere_pygame(vertices, faces, zones):
                 elif event.unicode == '5':
                     current_filter = 'ownership'
                     print("Filter set to: Ownership (Displaying player numbers)")
+                elif event.unicode == 'm':
+                    game_menu.main_game_menu(screen)
 
         screen.fill((0, 0, 0))
 

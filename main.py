@@ -1,8 +1,9 @@
 import spherey
 import zone_stats
 import game
-import menu
+import game_menu
 import pygame
+import company_start_menu
 
 # Number of players (choose from 2, 4, 5, 8)
 num_players = 5
@@ -24,14 +25,8 @@ current_player = players[0]
 
 # Initialize Pygame screen for menu
 pygame.init()
-screen = pygame.display.set_mode((600, 400))
-pygame.display.set_caption('Company Creation')
-
-# Open company creation menu for the current player
-menu.company_creation_menu(current_player, screen)
-
-# After company creation, proceed to the main game visualization
+screen = pygame.display.set_mode((1920, 1080))
 pygame.display.set_caption('Gold, Goop, and Gambling')
-spherey.visualize_sphere_pygame(vertices, faces, zones)
 
-
+# Open the main game menu for the current player
+spherey.visualize_sphere_pygame(vertices, faces, zones, screen)
