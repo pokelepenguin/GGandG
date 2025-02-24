@@ -38,9 +38,18 @@ def start_company(player, investment_amount, use_outside_investors, outside_inve
     company = Company(company_id, player, total_investment, public, outside_investment_amount)
     company.name = company_name
 
+    # Check if zones is not None
+    if zones is None:
+        print("Error: zones is None")
+        return None
+
     # Assign the player's spawn zone to the company
     spawn_zone_index = player.spawn_zone_index  # Assume this attribute exists
-    spawn_zone = zones[spawn_zone_index]   # Use the zones parameter
+    if spawn_zone_index >= len(zones):
+        print(f"Error: Invalid spawn_zone_index {spawn_zone_index}")
+        return None
+
+    spawn_zone = zones[spawn_zone_index]  # Use the zones parameter
     spawn_zone.owner = company
     company.zones_owned.append(spawn_zone_index)
 

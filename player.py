@@ -9,4 +9,3 @@ class Player:
 
     def __repr__(self):
         return f"Player(id={self.player_id}, name={self.name}, gold={self.personal_gold})"
-

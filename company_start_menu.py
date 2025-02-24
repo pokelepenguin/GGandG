@@ -1,13 +1,15 @@
 import pygame_menu
 import game_logic
 
-def company_creation_menu(player, screen):
+def company_creation_menu(player, screen, zones, spawn_zone_index):
     menu = pygame_menu.Menu('Start a Company', 600, 400, theme=pygame_menu.themes.THEME_DARK)
 
     investment = [player.personal_gold]  # Default investment to all personal gold
     use_outside_investors = [True]
     outside_investment_amount = [0]  # Default to 0
     company_name = [""]
+
+    created_company = [None]  # To store the created company
 
     def set_investment(value):
         try:
@@ -70,17 +72,19 @@ def company_creation_menu(player, screen):
         outside_investment = outside_investment_amount[0] if use_outside_investors[0] else 0
 
         # Start company
-        company = game_logic.start_company(player, investment[0], use_outside_investors[0], outside_investment, company_name[0])
+        company = game_logic.start_company(player, investment[0], use_outside_investors[0], outside_investment, company_name[0], zones)
 
         if company:
             print(f"Company {company.company_id} named {company.name} created successfully!")
             # Assign the spawn zone to the company
-            spawn_zone = 0  # Assuming the first zone is the spawn zone
-            print(f"Assigning spawn zone {spawn_zone} to company {company.company_id}")
-            company.add_zone(spawn_zone)
+            print(f"Assigning spawn zone {spawn_zone_index} to company {company.company_id}")
+            if spawn_zone_index not in company.zones_owned:
+                company.add_zone(spawn_zone_index)
+            else:
+                print(f"Zone {spawn_zone_index} is already owned by company {company.company_id}")
 
-        # Close the menu to proceed to the main game
-        menu.disable()
+            created_company[0] = company
+            menu.disable()
 
     # Add widgets to the menu
     menu.add.label(f"Available Personal Gold: {player.personal_gold}")
@@ -93,3 +97,5 @@ def company_creation_menu(player, screen):
     menu.add.button('Submit', submit)
     menu.add.button('Quit', pygame_menu.events.EXIT)
     menu.mainloop(screen)
+
+    return created_company[0]  # Return the created company if any

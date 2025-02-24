@@ -74,7 +74,7 @@ def main():
 
         # Start with the company creation menu
         print("Starting company creation menu")
-        company = company_start_menu.company_creation_menu(current_player, screen)
+        company = company_start_menu.company_creation_menu(current_player, screen, zones, current_player.spawn_zone_index)
         if company:
             companies.append(company)
             print(f"Company created: {company}")

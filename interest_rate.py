@@ -1,3 +1,4 @@
+from credit_score import CreditTier
 def calculate_interest_rate(company, loan_amount, term):
     base_rates = {
         CreditTier.S: 0.04,
