@@ -3,7 +3,7 @@ import stock_market
 import loan_screen
 import tech_tree
 import spherey_visualization as vis
-
+from company_performance import company_performance_menu
 
 def main_game_menu(screen, player, vertices, faces, zones):
     def return_to_sphere():
@@ -15,6 +15,7 @@ def main_game_menu(screen, player, vertices, faces, zones):
     menu.add.button('Stock Market', lambda: stock_market.stock_market_menu(screen, player))
     menu.add.button('Loan Screen', lambda: loan_screen.loan_screen_menu(screen, player))
     menu.add.button('Tech Tree', lambda: tech_tree.tech_tree_menu(screen, player))
+    menu.add.button('Company Performance', lambda: company_performance_menu(screen, player))
     menu.add.button('Return to Sphere', return_to_sphere)
     menu.add.button('Quit', pygame_menu.events.EXIT)
 

@@ -7,8 +7,5 @@ class Player:
         self.companies = []         # Companies started by the player
         self.stocks = {}            # Holdings in various companies (company_id: shares)
 
-
     def __repr__(self):
         return f"Player(id={self.player_id}, name={self.name}, gold={self.personal_gold})"
-
-
