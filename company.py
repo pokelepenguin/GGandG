@@ -1,6 +1,5 @@
 from credit_score import CreditTier, calculate_credit_score
 from interest_rate import calculate_interest_rate
-from datetime import datetime, timedelta
 import zone_stats
 
 class Company:

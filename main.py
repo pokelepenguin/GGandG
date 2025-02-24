@@ -1,4 +1,3 @@
-import spherey_core as core
 import spherey_visualization as vis
 import zone_stats
 import game_logic  # Renamed from game
@@ -7,7 +6,7 @@ import pygame
 import company_start_menu
 from datetime import datetime, timedelta
 from company import Company  # Import the Company class
-
+import spherey_core as core
 # Number of players (choose from 2, 4, 5, 8)
 num_players = 5
 
@@ -34,25 +33,13 @@ def monthly_update(companies, zones):
     for company in companies:
         print(f"Updating company: {company.company_id}")
         # Generate gold for each triangle owned
-        for zone_index in company.zones_owned:
-            print(f"Processing zone_index: {zone_index}")
-            if zone_index is not None and zone_index < len(zones):
-                zone = zones[zone_index]
-                print(f"Zone details: {zone}")
-                gold_generated = zone_stats.calculate_gold(zone)
-                print(f"Gold generated: {gold_generated}")
-                company.gold += gold_generated
-            else:
-                print(f"Invalid zone_index: {zone_index}")
+        company.update_triangle_income(zones)
 
         # Apply interest to loans
-        for loan in company.loans:
-            if loan is not None:
-                loan_amount, interest_rate, term = loan
-                company.total_liabilities += loan_amount * interest_rate
-                print(f"Processed loan: {loan}")
-            else:
-                print("Invalid loan found")
+        company.update_interest_expense()
+
+        # Update monthly income history
+        company.update_monthly_income_history()
 
         # Update credit score
         company.update_credit_score()
@@ -78,14 +65,10 @@ def main():
         if company:
             companies.append(company)
             print(f"Company created: {company}")
+            monthly_update(companies, zones)  # Start monthly updates immediately
         else:
             print("Failed to create company")
             return
-
-        # Set up timer for monthly updates
-        next_update_time = datetime.now() + timedelta(seconds=5)
-        initial_setup_end_time = datetime.now() + timedelta(minutes=3)
-        game_started = False
 
         while True:
             pygame.display.set_caption('Gold, Goop, and Gambling')
@@ -95,10 +78,7 @@ def main():
             game_menu.main_game_menu(screen, current_player, vertices, faces, zones)
             vis.visualize_sphere_pygame(vertices, faces, zones, screen, current_player)
 
-            if datetime.now() >= next_update_time:
-                print("Performing monthly update")
-                monthly_update(companies, zones)
-                next_update_time = datetime.now() + timedelta(seconds=5)
+            monthly_update(companies, zones)  # Perform monthly update
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
