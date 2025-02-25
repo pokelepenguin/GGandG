@@ -7,6 +7,8 @@ import company_start_menu
 from datetime import datetime, timedelta
 from company import Company  # Import the Company class
 import spherey_core as core
+from monthly_update import monthly_update  # Import the monthly_update function
+
 # Number of players (choose from 2, 4, 5, 8)
 num_players = 5
 
@@ -28,21 +30,8 @@ print("Zone stats generated")
 # For demonstration, we'll just use the first player
 current_player = players[0]
 
-# Function to perform monthly updates
-def monthly_update(companies, zones):
-    for company in companies:
-        print(f"Updating company: {company.company_id}")
-        # Generate gold for each triangle owned
-        company.update_triangle_income(zones)
-
-        # Apply interest to loans
-        company.update_interest_expense()
-
-        # Update monthly income history
-        company.update_monthly_income_history()
-
-        # Update credit score
-        company.update_credit_score()
+# Custom event for monthly update
+MONTHLY_UPDATE_EVENT = pygame.USEREVENT + 1
 
 def main():
     try:
@@ -65,7 +54,7 @@ def main():
         if company:
             companies.append(company)
             print(f"Company created: {company}")
-            monthly_update(companies, zones)  # Start monthly updates immediately
+            pygame.time.set_timer(MONTHLY_UPDATE_EVENT, 5000)  # Set timer for 5 seconds
         else:
             print("Failed to create company")
             return
@@ -78,9 +67,9 @@ def main():
             game_menu.main_game_menu(screen, current_player, vertices, faces, zones)
             vis.visualize_sphere_pygame(vertices, faces, zones, screen, current_player)
 
-            monthly_update(companies, zones)  # Perform monthly update
-
             for event in pygame.event.get():
+                if event.type == MONTHLY_UPDATE_EVENT:
+                    monthly_update(companies, zones, players)  # Perform monthly update
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     return

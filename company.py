@@ -93,3 +93,17 @@ class Company:
 
     def get_rolling_yearly_income(self):
         return sum(self.monthly_income_history)
+
+    def calculate_dividend(self):
+        total_dividend = self.dividend * self.shares_outstanding
+        return total_dividend
+
+    def distribute_dividends(self, players):
+        total_dividend = self.calculate_dividend()
+        for player_id, shares in self.shareholders.items():
+            if player_id in players:
+                players[player_id].personal_gold += total_dividend * (shares / self.shares_outstanding)
+
+    def update_company_gold(self, total_gold_earned, total_gold_expenses):
+        total_dividend = self.calculate_dividend()
+        self.gold = self.gold + total_gold_earned - total_gold_expenses - total_dividend
