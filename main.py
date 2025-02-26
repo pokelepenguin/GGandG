@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from company import Company  # Import the Company class
 import spherey_core as core
 from monthly_update import monthly_update  # Import the monthly_update function
+import threading
 
 # Number of players (choose from 2, 4, 5, 8)
 num_players = 5
@@ -33,10 +34,20 @@ current_player = players[0]
 # Custom event for monthly update
 MONTHLY_UPDATE_EVENT = pygame.USEREVENT + 1
 
+def main_game_loop(screen, current_player, vertices, faces, zones):
+    while True:
+        pygame.display.set_caption('Gold, Goop, and Gambling')
+        game_menu.main_game_menu(screen, current_player, vertices, faces, zones)
+        vis.visualize_sphere_pygame(vertices, faces, zones, screen, current_player)
+
+def monthly_update_loop(companies, zones, players):
+    while True:
+        monthly_update(companies, zones, players)
+        pygame.time.wait(5000)  # 5 seconds delay
+
 def main():
     try:
         print("Initializing Pygame")
-        # Initialize Pygame screen for menu
         pygame.init()
         print("Pygame initialized")
 
@@ -44,35 +55,22 @@ def main():
         screen = pygame.display.set_mode((1920, 1080))
         print("Display mode set")
 
-        # List of companies
         companies = []
-        print("Entering main loop")
-
-        # Start with the company creation menu
         print("Starting company creation menu")
         company = company_start_menu.company_creation_menu(current_player, screen, zones, current_player.spawn_zone_index)
         if company:
             companies.append(company)
             print(f"Company created: {company}")
-            pygame.time.set_timer(MONTHLY_UPDATE_EVENT, 5000)  # Set timer for 5 seconds
         else:
             print("Failed to create company")
             return
 
-        while True:
-            pygame.display.set_caption('Gold, Goop, and Gambling')
+        update_thread = threading.Thread(target=monthly_update_loop, args=(companies, zones, players))
 
-            # Regular game updates
-            print("Running game updates")
-            game_menu.main_game_menu(screen, current_player, vertices, faces, zones)
-            vis.visualize_sphere_pygame(vertices, faces, zones, screen, current_player)
+        update_thread.start()
+        main_game_loop(screen, current_player, vertices, faces, zones)
+        update_thread.join()
 
-            for event in pygame.event.get():
-                if event.type == MONTHLY_UPDATE_EVENT:
-                    monthly_update(companies, zones, players)  # Perform monthly update
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    return
     except Exception as e:
         print(f"An error occurred: {e}")
 

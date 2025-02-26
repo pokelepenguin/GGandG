@@ -34,10 +34,7 @@ def display_zone_stats(screen, zone):
         f"Defense: {zone.defense:.2f}"
     ]
 
-    # Position to display the stats
-    x, y = 20, 20  # Adjust as needed
-
-    # Background rectangle
+    x, y = 20, 20
     pygame.draw.rect(screen, (50, 50, 50), (x - 10, y - 10, 250, 150))
 
     for line in stats_text:
@@ -83,10 +80,9 @@ def visualize_sphere_pygame(vertices, faces, zones, screen, current_player):
     angle_x, angle_y = 0, 0
     zoom = 300
     clicked_face = None
-    selected_zone = None  # To keep track of the selected zone
-    current_filter = 'none'  # Options: 'none', 'goop', 'gold', 'defense'
+    selected_zone = None
+    current_filter = 'none'
 
-    # Calculate min and max values for each stat
     min_values = {
         'goop': min(zone.goop_sv for zone in zones),
         'gold': min(zone.gold_py for zone in zones),
@@ -108,7 +104,7 @@ def visualize_sphere_pygame(vertices, faces, zones, screen, current_player):
                 if event.button == 1:
                     clicked_face = get_clicked_face(event.pos, rotated_vertices, faces, zoom, screen)
                     if clicked_face is not None:
-                        selected_zone = zones[clicked_face]  # Get the selected zone
+                        selected_zone = zones[clicked_face]
             elif event.type == KEYDOWN:
                 if event.key == K_LEFT:
                     angle_y -= 0.1
@@ -141,25 +137,21 @@ def visualize_sphere_pygame(vertices, faces, zones, screen, current_player):
         rotated_vertices = core.rotate_vertices(vertices, angle_x, angle_y)
         projected_vertices = [project_vertex(v, zoom, screen) for v in rotated_vertices]
 
-        # Drawing the sphere with the applied filter
-        projected_faces = []  # To keep track for click detection
+        projected_faces = []
         for i, face in enumerate(faces):
             if is_face_visible(face, rotated_vertices):
                 points = [projected_vertices[j] for j in face]
                 projected_faces.append(points)
                 zone = zones[i]
-                # Calculate color based on the current filter
                 color = calculate_color(zone, min_values, max_values, current_filter)
                 pygame.draw.polygon(screen, color, points)
                 pygame.draw.polygon(screen, (0, 0, 0), points, 1)
 
                 if current_filter == 'ownership':
                     if zone.owner is not None:
-                        # Calculate centroid of the polygon
                         centroid = core.calculate_centroid(points)
-                        # Render the player number
                         font = pygame.font.SysFont('Arial', 14, bold=True)
-                        player_number = str(zone.owner.company_id)  # Add 1 to make player numbers start from 1
+                        player_number = str(zone.owner.company_id)
                         text_surface = font.render(player_number, True, (0, 0, 0))
                         text_rect = text_surface.get_rect(center=centroid)
                         screen.blit(text_surface, text_rect)
@@ -167,39 +159,32 @@ def visualize_sphere_pygame(vertices, faces, zones, screen, current_player):
                 if i == clicked_face:
                     pygame.draw.polygon(screen, (255, 255, 0), points, 3)
             else:
-                projected_faces.append(None)  # Placeholder
+                projected_faces.append(None)
 
-        # Draw the selected face and neighbors on the right
         if clicked_face is not None:
             center_x = 2 * screen.get_width() / 3
             center_y = screen.get_height() / 2
 
-            size = 300  # Increased size for better visibility
+            size = 300
             selected_face = faces[clicked_face]
             selected_vertices_indices = selected_face
             selected_vertices = [vertices[idx] for idx in selected_vertices_indices]
 
-            # Flatten the selected triangle to 2D with correct orientation
             tri_2d, x_axis, y_axis, v0, normal_sel = core.flatten_triangle(selected_vertices, angle_x, angle_y)
 
-            # Scale and translate the triangle to the right side
             tri_2d = [p * size for p in tri_2d]
             tri_center = sum(tri_2d) / 3
             tri_2d = [p - tri_center + np.array([center_x, center_y]) for p in tri_2d]
 
-            # Draw the selected triangle
             zone = zones[clicked_face]
             color = calculate_color(zone, min_values, max_values, current_filter)
             pygame.draw.polygon(screen, color, tri_2d)
             pygame.draw.polygon(screen, (0, 0, 0), tri_2d, 1)
 
-            # Mapping from global vertex indices to positions in tri_2d
             index_to_pos = {selected_vertices_indices[i]: tri_2d[i] for i in range(3)}
 
-            # Retrieve the neighbors of the selected face
             neighbors = face_graph[clicked_face]
 
-            # Draw neighboring triangles
             for neighbor_idx in neighbors:
                 neighbor_face = faces[neighbor_idx]
                 neighbor_vertices_indices = neighbor_face
@@ -207,26 +192,19 @@ def visualize_sphere_pygame(vertices, faces, zones, screen, current_player):
                 neighbor_tri_2d = []
 
                 for vertex in neighbor_vertices:
-                    # Compute vector from v0 to the vertex
                     vec = vertex - v0
-                    # Project onto the same 2D plane using x_axis and y_axis
                     x = np.dot(vec, x_axis)
                     y = np.dot(vec, y_axis)
                     neighbor_tri_2d.append(np.array([x, y]) * size)
 
-                # Adjust positions to fit the display
                 neighbor_tri_2d = [p - tri_center + np.array([center_x, center_y]) for p in neighbor_tri_2d]
 
-                # Draw the neighbor triangle
                 neighbor_zone = zones[neighbor_idx]
                 color = calculate_color(neighbor_zone, min_values, max_values, current_filter)
                 pygame.draw.polygon(screen, color, neighbor_tri_2d)
                 pygame.draw.polygon(screen, (0, 0, 0), neighbor_tri_2d, 1)
 
-            # Display stats for the selected zone
             display_zone_stats(screen, selected_zone)
-
-            # Display the current filter on the screen
             display_current_filter(screen, current_filter)
 
         pygame.display.flip()
