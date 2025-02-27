@@ -17,28 +17,28 @@ def company_performance_menu(screen, player):
     def refresh_menu():
         menu.clear()
         menu.add.label('Revenue')
-        menu.add.label(f'Triangle Income: {player.companies[0].triangle_income}')
-        menu.add.label(f'Patent Income: {player.companies[0].patent_income}')
+        menu.add.label(f'Triangle Income: {player.companies[0].triangle_income:.2f}')
+        menu.add.label(f'Patent Income: {player.companies[0].patent_income:.2f}')
 
         menu.add.label('Expenses')
-        menu.add.label(f'Interest Expense: {player.companies[0].interest_expense}')
-        menu.add.label(f'Goop Upgrade Expense: {player.companies[0].goop_upgrade_expense}')
-        menu.add.label(f'Patent Expense: {player.companies[0].patent_expense}')
+        menu.add.label(f'Interest Expense: {player.companies[0].interest_expense:.2f}')
+        menu.add.label(f'Goop Upgrade Expense: {player.companies[0].goop_upgrade_expense:.2f}')
+        menu.add.label(f'Patent Expense: {player.companies[0].patent_expense:.2f}')
 
         total_income_12 = player.companies[0].triangle_income + player.companies[0].get_rolling_yearly_income() + player.companies[0].patent_income
-        menu.add.label(f"Rolling 12 Month Total Income: {total_income_12}")
+        menu.add.label(f"Rolling 12 Month Total Income: {total_income_12:.2f}")
         total_expense_12 = player.companies[0].interest_expense + player.companies[0].goop_upgrade_expense + player.companies[0].patent_expense
-        menu.add.label(f"Rolling 12 Month Total Expense: {total_expense_12}")
+        menu.add.label(f"Rolling 12 Month Total Expense: {total_expense_12:.2f}")
         total_net_income_12 = total_income_12 - total_expense_12
-        menu.add.label(f"Rolling 12 Month Net Income: {total_net_income_12}")
+        menu.add.label(f"Rolling 12 Month Net Income: {total_net_income_12:.2f}")
 
         menu.add.label('Dividend')
         menu.add.text_input('Set Dividend: ', default=str(player.companies[0].dividend), onchange=set_dividend)
         menu.add.button('Submit Dividend', submit_dividend)
         def return_to_main():
             menu.disable()
-        menu.add.label(f"Company Gold: {player.companies[0].gold}")
-        menu.add.label(f"Player Gold: {player.personal_gold}")
+        menu.add.label(f"Company Gold: {player.companies[0].gold:.2f}")
+        menu.add.label(f"Player Gold: {player.personal_gold:.2f}")
         menu.add.button('Return to Main Menu', return_to_main)
         menu.add.button('Quit', pygame_menu.events.EXIT)
 

@@ -71,7 +71,7 @@ class Company:
             self.update_interest_expense()
 
     def get_max_loan_amount(self):
-        return 0.5 * self.total_assets
+        return 0.5 * (self.total_assets - self.total_liabilities)
 
     def add_zone(self, zone_index):
         if zone_index not in self.zones_owned:
@@ -84,7 +84,7 @@ class Company:
         self.triangle_income = sum(zone_stats.calculate_gold(zones[zone_index]) for zone_index in self.zones_owned)
 
     def update_interest_expense(self):
-        self.interest_expense = sum(loan[0] * loan[1] for loan in self.loans)
+        self.interest_expense = sum(loan["amount"] * loan["interest_rate"] / 1200 for loan in self.loans)
 
     def update_monthly_income_history(self):
         self.monthly_income_history.append(self.triangle_income)  # Add current month's income

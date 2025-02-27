@@ -19,4 +19,4 @@ def main_game_menu(screen, player, vertices, faces, zones):
     menu.add.button('Return to Sphere', return_to_sphere)
     menu.add.button('Quit', pygame_menu.events.EXIT)
 
-    menu.mainloop(screen)
+    menu.mainloop(screen, disable_loop=False)  # Ensure non-blocking main loop
