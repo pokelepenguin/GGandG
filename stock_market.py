@@ -10,4 +10,4 @@ def stock_market_menu(screen, player):
         menu.disable()
 
     menu.add.button('Return to Main Menu', return_to_main)
-    menu.mainloop(screen)
+    menu.mainloop(screen, disable_loop=False)
