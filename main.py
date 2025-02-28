@@ -43,6 +43,7 @@ def main_game_loop(screen, current_player, vertices, faces, zones):
 def monthly_update_loop(companies, zones, players):
     while True:
         monthly_update(companies, zones, players)
+        pygame.event.post(pygame.event.Event(MONTHLY_UPDATE_EVENT))
         pygame.time.wait(5000)  # 5 seconds delay
 
 def main():

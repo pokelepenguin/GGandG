@@ -9,3 +9,20 @@ class Player:
 
     def __repr__(self):
         return f"Player(id={self.player_id}, name={self.name}, gold={self.personal_gold})"
+
+    def add_company(self, company):
+        self.companies.append(company)
+
+    def buy_shares(self, company, shares):
+        if company.company_id not in self.stocks:
+            self.stocks[company.company_id] = 0
+        self.stocks[company.company_id] += shares
+        company.shareholders[self.player_id] = self.stocks[company.company_id]
+
+    def sell_shares(self, company, shares):
+        if company.company_id in self.stocks and self.stocks[company.company_id] >= shares:
+            self.stocks[company.company_id] -= shares
+            company.shareholders[self.player_id] = self.stocks[company.company_id]
+            if self.stocks[company.company_id] == 0:
+                del self.stocks[company.company_id]
+                company.remove_shareholder(self)

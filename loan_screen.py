@@ -1,54 +1,41 @@
 import pygame_menu
+import pygame
+import loan_screen_create
+import loan_screen_view
+from time_tracker import time_tracker
 
-def loan_screen_menu(screen, player):
-    menu = pygame_menu.Menu('Loan Screen', 600, 400, theme=pygame_menu.themes.THEME_DARK)
+MONTHLY_UPDATE_EVENT = pygame.USEREVENT + 1
 
-    # Maximum loan amount
-    max_loan_amount = player.companies[0].get_max_loan_amount()
+def loan_screen_menu(screen, player, main_game_menu_callback):
+    menu = pygame_menu.Menu('Loan Menu', 600, 400, theme=pygame_menu.themes.THEME_DARK)
 
-    # Variables to store loan details
-    loan_amount = [0]
-    interest_rate = [0]
-    monthly_payment = [0]
+    menu.add.button('Create Loan', lambda: loan_screen_create.loan_screen_menu(screen, player, main_game_menu_callback))
+    menu.add.button('View Loans', lambda: loan_screen_view.loan_screen_menu(screen, player, main_game_menu_callback))
+    menu.add.button('Return to Main Menu', lambda: main_game_menu_callback(screen, player, None, None, None))
 
-    # Function to update interest rate and monthly payment
-    def update_loan_details(value):
-        loan_amount[0] = value
-        interest_rate[0] = calculate_interest_rate(loan_amount[0])
-        monthly_payment[0] = calculate_monthly_payment(loan_amount[0], interest_rate[0])
+    def draw_time(screen):
+        font = pygame.font.Font(None, 36)
+        text = font.render(time_tracker.get_current_time(), True, (255, 255, 255))
+        screen.blit(text, (screen.get_width() - text.get_width() - 10, screen.get_height() - text.get_height() - 10))
 
-        interest_label.set_title(f'Interest Rate: {interest_rate[0]:.2f}%')
-        payment_label.set_title(f'Monthly Payment: {monthly_payment[0]:.2f} gold')
+    clock = pygame.time.Clock()
 
-    # Function to calculate interest rate based on loan amount (example logic)
-    def calculate_interest_rate(amount):
-        base_rate = 5  # Base interest rate
-        rate_increase = (amount / max_loan_amount) * 5  # Increase rate based on loan amount
-        return base_rate + rate_increase
+    while True:
+        events = pygame.event.get()
+        for event in events:
+            if event.type == MONTHLY_UPDATE_EVENT:
+                screen.fill((0, 0, 0))
+                menu.update(events)
+                menu.draw(screen)
+                draw_time(screen)
+                pygame.display.flip()
 
-    # Function to calculate monthly payment (interest only)
-    def calculate_monthly_payment(amount, rate):
-        return amount * (rate / 100)
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return
 
-    # Function to create the loan and add it to the company
-    def create_loan():
-        loan_details = (loan_amount[0], interest_rate[0], 12)  # Assuming a 12-month term
-        player.companies[0].loans.append(loan_details)
-        print(f"Loan created: {loan_details}")
-        return_to_main()
-
-    # Add slider to menu
-    menu.add.range_slider('Loan Amount: ', default=0, range_values=(0, max_loan_amount), increment=1, onchange=update_loan_details)
-
-    # Add labels to display interest rate and monthly payment
-    interest_label = menu.add.label(f'Interest Rate: {interest_rate[0]:.2f}%')
-    payment_label = menu.add.label(f'Monthly Payment: {monthly_payment[0]:.2f} gold')
-
-    # Add button to create loan
-    menu.add.button('Create Loan', create_loan)
-
-    def return_to_main():
-        menu.disable()
-
-    menu.add.button('Return to Main Menu', return_to_main)
-    menu.mainloop(screen)
+        menu.update(events)
+        menu.draw(screen)
+        draw_time(screen)
+        pygame.display.flip()
+        clock.tick(60)

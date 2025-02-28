@@ -71,7 +71,7 @@ class Company:
             self.update_interest_expense()
 
     def get_max_loan_amount(self):
-        return 0.5 * self.total_assets
+        return 0.5 * (self.total_assets - self.total_liabilities)
 
     def add_zone(self, zone_index):
         if zone_index not in self.zones_owned:
@@ -84,7 +84,7 @@ class Company:
         self.triangle_income = sum(zone_stats.calculate_gold(zones[zone_index]) for zone_index in self.zones_owned)
 
     def update_interest_expense(self):
-        self.interest_expense = sum(loan[0] * loan[1] for loan in self.loans)
+        self.interest_expense = sum(loan["amount"] * loan["interest_rate"] / 1200 for loan in self.loans)
 
     def update_monthly_income_history(self):
         self.monthly_income_history.append(self.triangle_income)  # Add current month's income
@@ -95,15 +95,20 @@ class Company:
         return sum(self.monthly_income_history)
 
     def calculate_dividend(self):
-        total_dividend = self.dividend * self.shares_outstanding
+        total_dividend = self.dividend
         return total_dividend
 
     def distribute_dividends(self, players):
         total_dividend = self.calculate_dividend()
         for player_id, shares in self.shareholders.items():
             if player_id in players:
-                players[player_id].personal_gold += total_dividend * (shares / self.shares_outstanding)
+                player = players[player_id]
+                player.personal_gold += total_dividend * (shares / self.shares_outstanding)
 
     def update_company_gold(self, total_gold_earned, total_gold_expenses):
         total_dividend = self.calculate_dividend()
         self.gold = self.gold + total_gold_earned - total_gold_expenses - total_dividend
+
+    def remove_shareholder(self, player):
+        if player.player_id in self.shareholders:
+            del self.shareholders[player.player_id]
