@@ -14,10 +14,6 @@ def company_performance_menu(screen, player, main_game_menu_callback):
         except ValueError:
             player.companies[0].dividend = 0
 
-    def submit_dividend():
-        player.companies[0].distribute_dividends(player.companies[0].shareholders)
-        print(f"Dividend set to: {player.companies[0].dividend}")
-
     def refresh_menu():
         menu.clear()
         menu.add.label('Revenue')
@@ -38,7 +34,8 @@ def company_performance_menu(screen, player, main_game_menu_callback):
 
         menu.add.label('Dividend')
         menu.add.text_input('Set Dividend: ', default=str(player.companies[0].dividend), onchange=set_dividend)
-        menu.add.button('Submit Dividend', submit_dividend)
+        # Removing the broken submit dividend feature for now
+        # menu.add.button('Submit Dividend', submit_dividend)
 
         def return_to_main():
             menu.disable()

@@ -21,7 +21,7 @@ def main_game_menu(screen, player, vertices, faces, zones):
 
     menu = pygame_menu.Menu('Main Menu', 600, 400, theme=pygame_menu.themes.THEME_DARK)
 
-    menu.add.button('Stock Market', lambda: stock_market.stock_market_menu(screen, player))
+    menu.add.button('Stock Market', lambda: stock_market.stock_market_menu(screen, player, main_game_menu))
     menu.add.button('Loans', lambda: loan_screen.loan_screen_menu(screen, player, main_game_menu))
     menu.add.button('Tech Tree', lambda: tech_tree.tech_tree_menu(screen, player))
     menu.add.button('Company Performance', lambda: company_performance_menu(screen, player, main_game_menu))
