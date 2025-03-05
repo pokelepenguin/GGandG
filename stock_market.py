@@ -4,7 +4,7 @@ from time_tracker import time_tracker
 
 MONTHLY_UPDATE_EVENT = pygame.USEREVENT + 1
 
-def stock_market_menu(screen, player, main_game_menu_callback):
+def stock_market_menu(screen, player, main_game_menu_callback, vertices, faces, zones):
     def set_dividend(value):
         try:
             rolling_net_income_12 = player.companies[0].triangle_income - (
@@ -29,13 +29,12 @@ def stock_market_menu(screen, player, main_game_menu_callback):
         menu.add.label(f"Rolling 12 Month Net Income: {total_net_income_12:.2f}")
 
         menu.add.label('Dividend')
-        menu.add.text_input('Set Monthly Dividend: ', default=str(player.companies[0].dividend), onchange=set_dividend)
-        # Removing the broken submit dividend feature for now
-        # menu.add.button('Submit Dividend', submit_dividend)
+        # Add slider to menu
+        menu.add.range_slider('Monthly Dividend: ', default=0, range_values=(0, this_month_net_income), increment=1, onchange=set_dividend)
 
         def return_to_main():
             menu.disable()
-            main_game_menu_callback(screen, player, None, None, None)
+            main_game_menu_callback(screen, player, vertices, faces, zones)
 
         menu.add.label(f"Company Gold: {player.companies[0].gold:.2f}")
         menu.add.label(f"Player Gold: {player.personal_gold:.2f}")

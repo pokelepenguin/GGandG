@@ -6,13 +6,23 @@ import tech_tree
 import spherey_visualization as vis
 from company_performance import company_performance_menu
 from time_tracker import time_tracker
+import spherey_core as core
+import zone_stats
 
 MONTHLY_UPDATE_EVENT = pygame.USEREVENT + 1
+num_players = 5  # Ensure this matches the number of players used in the game
 
 def main_game_menu(screen, player, vertices, faces, zones):
     def return_to_sphere():
         screen.fill((0, 0, 0))
+        if vertices is None or faces is None or zones is None:
+            reinitialize_sphere_data()
         vis.visualize_sphere_pygame(vertices, faces, zones, screen, player)
+
+    def reinitialize_sphere_data():
+        global vertices, faces, zones
+        vertices, faces = core.create_spherical_mesh(subdivisions=2)
+        zones = zone_stats.generate_zone_stats(zone_stats.assign_zones(faces, num_players)[0])
 
     def draw_time(screen):
         font = pygame.font.Font(None, 36)
@@ -21,10 +31,10 @@ def main_game_menu(screen, player, vertices, faces, zones):
 
     menu = pygame_menu.Menu('Main Menu', 600, 400, theme=pygame_menu.themes.THEME_DARK)
 
-    menu.add.button('Stock Market', lambda: stock_market.stock_market_menu(screen, player, main_game_menu))
-    menu.add.button('Loans', lambda: loan_screen.loan_screen_menu(screen, player, main_game_menu))
-    menu.add.button('Tech Tree', lambda: tech_tree.tech_tree_menu(screen, player))
-    menu.add.button('Company Performance', lambda: company_performance_menu(screen, player, main_game_menu))
+    menu.add.button('Stock Market', lambda: stock_market.stock_market_menu(screen, player, main_game_menu, vertices, faces, zones))
+    menu.add.button('Loans', lambda: loan_screen.loan_screen_menu(screen, player, main_game_menu, vertices, faces, zones))
+    menu.add.button('Tech Tree', lambda: tech_tree.tech_tree_menu(screen, player, main_game_menu, vertices, faces, zones))
+    menu.add.button('Company Performance', lambda: company_performance_menu(screen, player, main_game_menu, vertices, faces, zones))
     menu.add.button('Return to Sphere', return_to_sphere)
     menu.add.button('Quit', pygame_menu.events.EXIT)
 
