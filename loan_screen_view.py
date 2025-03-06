@@ -4,7 +4,7 @@ from time_tracker import time_tracker
 
 MONTHLY_UPDATE_EVENT = pygame.USEREVENT + 1
 
-def loan_screen_menu(screen, player, main_game_menu_callback):
+def loan_screen_menu(screen, player, main_game_menu_callback, vertices, faces, zones):
     menu = pygame_menu.Menu('View Loans', 600, 400, theme=pygame_menu.themes.THEME_DARK)
 
     # Function to display loans
@@ -17,7 +17,7 @@ def loan_screen_menu(screen, player, main_game_menu_callback):
 
     # Display current loans
     display_loans()
-    menu.add.button('Return to Main Menu', lambda: main_game_menu_callback(screen, player, None, None, None))
+    menu.add.button('Return to Main Menu', lambda: main_game_menu_callback(screen, player, vertices, faces, zones))
 
     def draw_time(screen):
         font = pygame.font.Font(None, 36)

@@ -7,9 +7,11 @@ MONTHLY_UPDATE_EVENT = pygame.USEREVENT + 1
 def stock_market_menu(screen, player, main_game_menu_callback, vertices, faces, zones):
     def set_dividend(value):
         try:
-            rolling_net_income_12 = player.companies[0].triangle_income - (
-                    player.companies[0].interest_expense + player.companies[0].goop_upgrade_expense + player.companies[0].patent_expense)
-            max_dividend = rolling_net_income_12 / 12
+            this_month_net_income = player.companies[0].triangle_income - (
+                player.companies[0].interest_expense + player.companies[0].goop_upgrade_expense + player.companies[0].patent_expense)
+            max_dividend = this_month_net_income
+            if max_dividend < 0:
+                max_dividend = 0
             player.companies[0].dividend = min(int(value), max_dividend)
         except ValueError:
             player.companies[0].dividend = 0

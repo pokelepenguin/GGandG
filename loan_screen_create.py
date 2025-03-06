@@ -4,7 +4,7 @@ from time_tracker import time_tracker
 
 MONTHLY_UPDATE_EVENT = pygame.USEREVENT + 1
 
-def loan_screen_menu(screen, player, main_game_menu_callback):
+def loan_screen_menu(screen, player, main_game_menu_callback, vertices, faces, zones):
     menu = pygame_menu.Menu('Create Loan', 600, 400, theme=pygame_menu.themes.THEME_DARK)
 
     loan_details = {
@@ -53,7 +53,7 @@ def loan_screen_menu(screen, player, main_game_menu_callback):
         print(f"Loan created: {loan}")
         update_interest_expense()
         menu.disable()  # Disable the current menu
-        main_game_menu_callback(screen, player, None, None, None)  # Call the main game menu
+        main_game_menu_callback(screen, player, vertices, faces, zones)  # Call the main game menu
 
     # Function to update the total interest expense for the company
     def update_interest_expense():
@@ -72,7 +72,7 @@ def loan_screen_menu(screen, player, main_game_menu_callback):
 
     # Add button to create loan
     menu.add.button('Create Loan', create_loan)
-    menu.add.button('Return to Main Menu', lambda: main_game_menu_callback(screen, player, None, None, None))
+    menu.add.button('Return to Main Menu', lambda: main_game_menu_callback(screen, player, vertices, faces, zones))
 
     def draw_time(screen):
         font = pygame.font.Font(None, 36)
